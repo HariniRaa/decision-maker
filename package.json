@@ -1,0 +1,8 @@
+{
+  "name": "delulu-checker",
+  "version": "1.0.0",
+  "description": "A critical thinking sparring partner that challenges your decisions",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0"
+  }
+}
