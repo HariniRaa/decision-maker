@@ -3,245 +3,826 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Delulu Checker</title>
+<title>Decision Maker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    background: #0a0a0a;
-    color: #e0e0e0;
+    background: linear-gradient(170deg, #F2EAE0 0%, #B4D3D9 40%, #BDA6CE 70%, #9B8EC7 100%);
+    color: #3d2e5c;
     height: 100dvh;
     display: flex;
-    flex-direction: column;
+    overflow: hidden;
   }
 
-  header {
-    text-align: center;
-    padding: 2rem 1rem 1rem;
-    flex-shrink: 0;
+  /* ── Auth screen ── */
+  #auth-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
   }
 
-  header h1 {
-    font-size: 1.5rem;
+  .auth-box {
+    width: 100%;
+    max-width: 400px;
+    padding: 2.5rem;
+    background: rgba(255,255,255,0.45);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 1.25rem;
+    border: 1px solid rgba(255,255,255,0.5);
+    box-shadow: 0 8px 32px rgba(155,142,199,0.15);
+  }
+
+  .auth-box h1 {
+    font-size: 2rem;
     font-weight: 700;
-    color: #fff;
+    color: #3d2e5c;
+    margin-bottom: 0.5rem;
     letter-spacing: -0.03em;
   }
 
-  header p {
+  .auth-box p.subtitle {
+    font-size: 1rem;
+    color: #5a4a7a;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
+
+  .auth-box .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(155,142,199,0.25);
+  }
+
+  .auth-box .tabs button {
+    flex: 1;
+    background: none;
+    border: none;
+    color: #8a7baa;
+    padding: 0.75rem 0;
+    font-size: 1rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .auth-box .tabs button.active {
+    color: #3d2e5c;
+    border-bottom-color: #9B8EC7;
+  }
+
+  .auth-box label {
+    display: block;
+    font-size: 0.9rem;
+    color: #6b5b8a;
+    margin-bottom: 0.35rem;
+  }
+
+  .auth-box input {
+    width: 100%;
+    background: rgba(255,255,255,0.6);
+    border: 1px solid rgba(155,142,199,0.25);
+    border-radius: 0.5rem;
+    padding: 0.75rem 0.85rem;
+    color: #3d2e5c;
+    font-size: 1rem;
+    outline: none;
+    margin-bottom: 1rem;
+    transition: border-color 0.15s;
+  }
+
+  .auth-box input:focus { border-color: #9B8EC7; }
+  .auth-box input::placeholder { color: #8a7baa; }
+
+  .auth-box button.auth-submit {
+    width: 100%;
+    background: #9B8EC7;
+    color: #fff;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.8rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .auth-box button.auth-submit:hover { opacity: 0.9; }
+  .auth-box button.auth-submit:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .auth-error {
+    color: #c0392b;
     font-size: 0.85rem;
-    color: #666;
-    margin-top: 0.35rem;
+    margin-bottom: 1rem;
+    min-height: 1.2em;
+  }
+
+  /* ── App layout ── */
+  #app-screen {
+    display: none;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 280px;
+    min-width: 280px;
+    background: rgba(255,255,255,0.25);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(255,255,255,0.3);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  #sidebar-header {
+    padding: 1.25rem 1rem;
+    flex-shrink: 0;
+  }
+
+  #new-chat-btn {
+    width: 100%;
+    background: rgba(255,255,255,0.5);
+    color: #4a3d6e;
+    border: 1px solid rgba(155,142,199,0.3);
+    border-radius: 0.65rem;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: left;
+  }
+
+  #new-chat-btn:hover { background: rgba(255,255,255,0.65); }
+
+  #conversation-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 0.5rem;
+  }
+
+  .convo-item {
+    padding: 0.65rem 0.85rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-size: 0.92rem;
+    color: #5a4a7a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.15s, color 0.15s;
+    margin-bottom: 2px;
+  }
+
+  .convo-item:hover { background: rgba(255,255,255,0.3); color: #3d2e5c; }
+  .convo-item.active { background: rgba(255,255,255,0.45); color: #3d2e5c; font-weight: 500; }
+
+  #sidebar-footer {
+    padding: 1rem;
+    border-top: 1px solid rgba(155,142,199,0.2);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  #user-email {
+    font-size: 0.82rem;
+    color: #6b5b8a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+
+  #sign-out-btn {
+    background: none;
+    border: 1px solid rgba(155,142,199,0.3);
+    color: #6b5b8a;
+    border-radius: 0.4rem;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  #sign-out-btn:hover { color: #3d2e5c; border-color: #9B8EC7; }
+
+  /* ── Main chat area ── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
   }
 
   #conversation {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem;
+    padding: 1.5rem 1rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    max-width: 640px;
+    gap: 1.25rem;
+    max-width: 720px;
     width: 100%;
     margin: 0 auto;
   }
 
   .msg {
     max-width: 85%;
-    padding: 0.85rem 1.1rem;
+    padding: 1rem 1.25rem;
     border-radius: 1rem;
-    line-height: 1.55;
-    font-size: 0.95rem;
+    line-height: 1.65;
+    font-size: 1.05rem;
     white-space: pre-wrap;
     word-wrap: break-word;
   }
 
   .msg.user {
     align-self: flex-end;
-    background: #1a1a2e;
-    color: #c8c8e0;
+    background: #9B8EC7;
+    color: #fff;
     border-bottom-right-radius: 0.3rem;
+    box-shadow: 0 2px 12px rgba(155,142,199,0.25);
   }
 
   .msg.assistant {
     align-self: flex-start;
-    background: #1a1a1a;
-    color: #d4d4d4;
+    background: rgba(255,255,255,0.7);
+    color: #3d2e5c;
     border-bottom-left-radius: 0.3rem;
-    border: 1px solid #222;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   }
 
   .msg.assistant.thinking {
-    color: #555;
+    color: #8a7baa;
     font-style: italic;
   }
 
+  /* ── Empty state (centered input) ── */
   #empty-state {
     flex: 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    color: #333;
-    font-size: 1.05rem;
     padding: 2rem;
-    line-height: 1.6;
+    text-align: center;
   }
 
+  #empty-state h2 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #3d2e5c;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.03em;
+  }
+
+  #empty-state .subheading {
+    font-size: 1.1rem;
+    color: #5a4a7a;
+    max-width: 560px;
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+  }
+
+  #empty-state .empty-input-wrap {
+    width: 100%;
+    max-width: 620px;
+    margin-bottom: 1.5rem;
+  }
+
+  #empty-state .empty-input-wrap form {
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 1rem;
+    border: 1px solid rgba(255,255,255,0.6);
+    padding: 1.25rem 1.25rem 0.75rem;
+    box-shadow: 0 8px 32px rgba(155,142,199,0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  #empty-state .empty-input-wrap textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: #3d2e5c;
+    font-size: 1.1rem;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    min-height: 3.5rem;
+    max-height: 8rem;
+    line-height: 1.5;
+  }
+
+  #empty-state .empty-input-wrap textarea::placeholder { color: #8a7baa; }
+
+  #empty-state .empty-input-wrap .form-footer {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  #empty-state .empty-input-wrap button {
+    background: #9B8EC7;
+    color: #fff;
+    border: none;
+    border-radius: 0.65rem;
+    padding: 0.7rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  #empty-state .empty-input-wrap button:hover { opacity: 0.9; }
+  #empty-state .empty-input-wrap button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  #empty-gif {
+    max-width: 320px;
+    max-height: 220px;
+    border-radius: 0.75rem;
+    margin-top: 0.5rem;
+  }
+
+  /* ── Bottom input bar (shown when conversation active) ── */
   #input-bar {
     flex-shrink: 0;
     padding: 1rem;
-    background: #0a0a0a;
-    border-top: 1px solid #1a1a1a;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255,255,255,0.2);
+    display: none;
   }
 
   #input-bar form {
-    max-width: 640px;
+    max-width: 720px;
     margin: 0 auto;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 1rem;
+    border: 1px solid rgba(255,255,255,0.6);
+    padding: 1rem 1.25rem 0.65rem;
+    box-shadow: 0 4px 20px rgba(155,142,199,0.1);
     display: flex;
+    flex-direction: column;
     gap: 0.6rem;
   }
 
   #input-bar textarea {
-    flex: 1;
-    background: #141414;
-    border: 1px solid #2a2a2a;
-    border-radius: 0.75rem;
-    padding: 0.75rem 1rem;
-    color: #e0e0e0;
-    font-size: 0.95rem;
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: #3d2e5c;
+    font-size: 1.05rem;
     font-family: inherit;
     resize: none;
     outline: none;
     min-height: 2.75rem;
     max-height: 8rem;
     line-height: 1.4;
-    transition: border-color 0.15s;
   }
 
-  #input-bar textarea:focus {
-    border-color: #444;
-  }
+  #input-bar textarea::placeholder { color: #8a7baa; }
 
-  #input-bar textarea::placeholder {
-    color: #444;
+  #input-bar .form-footer {
+    display: flex;
+    justify-content: flex-end;
   }
 
   #input-bar button {
-    align-self: flex-end;
-    background: #fff;
-    color: #000;
+    background: #9B8EC7;
+    color: #fff;
     border: none;
-    border-radius: 0.75rem;
-    padding: 0.75rem 1.25rem;
-    font-size: 0.9rem;
+    border-radius: 0.65rem;
+    padding: 0.65rem 1.5rem;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: opacity 0.15s;
-    flex-shrink: 0;
   }
 
-  #input-bar button:hover { opacity: 0.85; }
+  #input-bar button:hover { opacity: 0.9; }
   #input-bar button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── Mobile responsive ── */
+  @media (max-width: 700px) {
+    #sidebar { display: none; }
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>Decision Buddy</h1>
-  <p>Thought partner to help you dig deeper,and find gaps in your thought process, so you can make defensible decisions.Based on behavioural psychology principles.</p>
-  <p> Because delulu is not always the solulu. </p>
-</header>
+<!-- ═══ AUTH SCREEN ═══ -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <h1>Decision Maker</h1>
+    <p class="subtitle">Thought partner to help you dig deeper and make defensible decisions — based on behavioural psychology principles. Because delulu is not always the solulu.</p>
+    <div class="tabs">
+      <button id="tab-login" class="active" onclick="switchAuthTab('login')">Log in</button>
+      <button id="tab-signup" onclick="switchAuthTab('signup')">Sign up</button>
+    </div>
+    <div class="auth-error" id="auth-error"></div>
+    <form id="auth-form">
+      <label for="auth-email">Email</label>
+      <input type="email" id="auth-email" placeholder="you@example.com" required>
+      <label for="auth-password">Password</label>
+      <input type="password" id="auth-password" placeholder="Your password" required minlength="6">
+      <button type="submit" class="auth-submit" id="auth-submit-btn">Log in</button>
+    </form>
+  </div>
+</div>
 
-<div id="empty-state">What decision can I help you with today?</div>
-<div id="conversation" style="display:none"></div>
+<!-- ═══ APP SCREEN ═══ -->
+<div id="app-screen">
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <button id="new-chat-btn">+ New chat</button>
+    </div>
+    <div id="conversation-list"></div>
+    <div id="sidebar-footer">
+      <div id="user-email"></div>
+      <button id="sign-out-btn">Sign out</button>
+    </div>
+  </div>
 
-<div id="input-bar">
-  <form id="chat-form">
-    <textarea id="user-input" placeholder="I'm thinking about..." rows="1"></textarea>
-    <button type="submit" id="send-btn">Send</button>
-  </form>
+  <!-- Main area -->
+  <div id="main">
+    <!-- Empty state with centered input -->
+    <div id="empty-state">
+      <h2>Decision Maker</h2>
+      <div class="subheading">Thought partner to help you dig deeper and make defensible decisions — based on behavioural psychology principles. Because delulu is not always the solulu.</div>
+      <div class="empty-input-wrap">
+        <form id="empty-chat-form">
+          <textarea id="empty-input" placeholder="What decision are you wrestling with?" rows="2"></textarea>
+          <div class="form-footer">
+            <button type="submit" id="empty-send-btn">Send</button>
+          </div>
+        </form>
+      </div>
+      <img id="empty-gif" src="" alt="" style="display:none">
+    </div>
+
+    <!-- Active conversation -->
+    <div id="conversation" style="display:none"></div>
+
+    <!-- Bottom input bar (visible during active chat) -->
+    <div id="input-bar">
+      <form id="chat-form">
+        <textarea id="user-input" placeholder="What decision are you facing?" rows="1"></textarea>
+        <div class="form-footer">
+          <button type="submit" id="send-btn">Send</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <script>
-const convo = document.getElementById("conversation");
-const empty = document.getElementById("empty-state");
-const form = document.getElementById("chat-form");
-const input = document.getElementById("user-input");
-const btn = document.getElementById("send-btn");
+// ── Supabase client ──
+const SUPABASE_URL = 'https://htcawxswxnfgujtgxttw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0Y2F3eHN3eG5mZ3VqdGd4dHR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTU5MDUsImV4cCI6MjA5MDUzMTkwNX0.l_iA7SnS8_hECsDw5336i9yFj30lPJvhoqGHvfBKWGM';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ── DOM refs ──
+const authScreen = document.getElementById('auth-screen');
+const appScreen = document.getElementById('app-screen');
+const authForm = document.getElementById('auth-form');
+const authError = document.getElementById('auth-error');
+const authEmail = document.getElementById('auth-email');
+const authPassword = document.getElementById('auth-password');
+const authSubmitBtn = document.getElementById('auth-submit-btn');
+const tabLogin = document.getElementById('tab-login');
+const tabSignup = document.getElementById('tab-signup');
+
+const convoList = document.getElementById('conversation-list');
+const convo = document.getElementById('conversation');
+const emptyState = document.getElementById('empty-state');
+const inputBar = document.getElementById('input-bar');
+const chatForm = document.getElementById('chat-form');
+const userInput = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+const emptyChatForm = document.getElementById('empty-chat-form');
+const emptyInput = document.getElementById('empty-input');
+const emptySendBtn = document.getElementById('empty-send-btn');
+const emptyGif = document.getElementById('empty-gif');
+const userEmailEl = document.getElementById('user-email');
+const signOutBtn = document.getElementById('sign-out-btn');
+const newChatBtn = document.getElementById('new-chat-btn');
+
+// ── State ──
+let authMode = 'login';
+let currentUser = null;
+let conversations = [];
+let currentConvoId = null;
 let messages = [];
 
-// Auto-resize textarea
-input.addEventListener("input", () => {
-  input.style.height = "auto";
-  input.style.height = Math.min(input.scrollHeight, 128) + "px";
+// ── GIF pool ──
+const gifUrls = [
+  "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNjRiZGQ0OTc3ZWRkMjIzYjVlYjEwZGMyNmI2YzAyNTQ4ZjcyMjI1ZiZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/3o7TKnO6Wfc0eomNl6/giphy.gif",
+  "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExZjA5OTZjMTkxYzE0MmFhNjQ3MzAxYzQ1ZWNhNmFjYjg2NjQwOTIwOSZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/3ohzdYJK1lnOYUGRva/giphy.gif",
+  "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExY2I5ZWJhZjg2MzNiZjI4MTRmZmE0MjAyZGQwODMzOGRhMjM5ZDFkYyZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/JRhS6WoswF8FxE0g2R/giphy.gif",
+  "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzBhYTNmOWRlZWZlZjdiODc2NDZhMDViOWFmZGE1YWEwNjZmNjdjMyZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/Oj5w7QOeA0enm/giphy.gif"
+];
+
+function showRandomGif() {
+  const url = gifUrls[Math.floor(Math.random() * gifUrls.length)];
+  emptyGif.src = url;
+  emptyGif.style.display = 'block';
+}
+
+// ── Auth tab switching ──
+function switchAuthTab(mode) {
+  authMode = mode;
+  authError.textContent = '';
+  if (mode === 'login') {
+    tabLogin.classList.add('active');
+    tabSignup.classList.remove('active');
+    authSubmitBtn.textContent = 'Log in';
+  } else {
+    tabSignup.classList.add('active');
+    tabLogin.classList.remove('active');
+    authSubmitBtn.textContent = 'Sign up';
+  }
+}
+window.switchAuthTab = switchAuthTab;
+
+// ── Auth form submit ──
+authForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  authError.textContent = '';
+  authSubmitBtn.disabled = true;
+
+  const email = authEmail.value.trim();
+  const password = authPassword.value;
+
+  try {
+    let result;
+    if (authMode === 'login') {
+      result = await supabase.auth.signInWithPassword({ email, password });
+    } else {
+      result = await supabase.auth.signUp({ email, password });
+    }
+
+    if (result.error) throw result.error;
+
+    if (authMode === 'signup' && result.data?.user && !result.data.session) {
+      authError.style.color = '#27ae60';
+      authError.textContent = 'Check your email to confirm your account, then log in.';
+      authSubmitBtn.disabled = false;
+      return;
+    }
+  } catch (err) {
+    authError.style.color = '#c0392b';
+    authError.textContent = err.message || 'Something went wrong';
+  }
+  authSubmitBtn.disabled = false;
 });
 
-// Enter to send, Shift+Enter for newline
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    form.dispatchEvent(new Event("submit"));
+// ── Auth state listener ──
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    currentUser = session.user;
+    showApp();
+  } else {
+    currentUser = null;
+    showAuth();
   }
 });
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const text = input.value.trim();
+// ── Check initial session ──
+(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    currentUser = session.user;
+    showApp();
+  }
+})();
+
+function showAuth() {
+  authScreen.style.display = 'flex';
+  appScreen.style.display = 'none';
+}
+
+async function showApp() {
+  authScreen.style.display = 'none';
+  appScreen.style.display = 'flex';
+  userEmailEl.textContent = currentUser.email;
+  await loadConversations();
+  startNewChat();
+}
+
+// ── Sign out ──
+signOutBtn.addEventListener('click', async () => {
+  await supabase.auth.signOut();
+});
+
+// ── Conversations CRUD ──
+async function loadConversations() {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('id, title, updated_at')
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    console.error('Failed to load conversations:', error);
+    conversations = [];
+  } else {
+    conversations = data || [];
+  }
+  renderConversationList();
+}
+
+function renderConversationList() {
+  convoList.innerHTML = '';
+  conversations.forEach((c) => {
+    const div = document.createElement('div');
+    div.className = 'convo-item' + (c.id === currentConvoId ? ' active' : '');
+    div.textContent = c.title;
+    div.addEventListener('click', () => loadConversation(c.id));
+    convoList.appendChild(div);
+  });
+}
+
+async function loadConversation(id) {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) {
+    console.error('Failed to load conversation:', error);
+    return;
+  }
+
+  currentConvoId = data.id;
+  messages = data.messages || [];
+
+  emptyState.style.display = 'none';
+  convo.style.display = 'flex';
+  inputBar.style.display = 'block';
+
+  convo.innerHTML = '';
+  messages.forEach((m) => appendMsg(m.role, m.content));
+  renderConversationList();
+  userInput.focus();
+}
+
+function startNewChat() {
+  currentConvoId = null;
+  messages = [];
+  convo.innerHTML = '';
+  convo.style.display = 'none';
+  inputBar.style.display = 'none';
+  emptyState.style.display = 'flex';
+  showRandomGif();
+  renderConversationList();
+  emptyInput.focus();
+}
+
+newChatBtn.addEventListener('click', startNewChat);
+
+async function saveConversation() {
+  if (!currentUser) return;
+
+  const title = messages.length > 0 && messages[0].role === 'user'
+    ? messages[0].content.substring(0, 50)
+    : 'New conversation';
+
+  if (currentConvoId) {
+    await supabase
+      .from('conversations')
+      .update({ messages, title, updated_at: new Date().toISOString() })
+      .eq('id', currentConvoId);
+  } else {
+    const { data, error } = await supabase
+      .from('conversations')
+      .insert({ user_id: currentUser.id, title, messages })
+      .select()
+      .single();
+
+    if (!error && data) {
+      currentConvoId = data.id;
+    }
+  }
+  await loadConversations();
+}
+
+// ── Chat submission (shared logic) ──
+async function handleChatSubmit(text, inputEl, btnEl) {
   if (!text) return;
 
-  // Show conversation, hide empty state
-  empty.style.display = "none";
-  convo.style.display = "flex";
+  emptyState.style.display = 'none';
+  convo.style.display = 'flex';
+  inputBar.style.display = 'block';
 
-  // Add user message
-  messages.push({ role: "user", content: text });
-  appendMsg("user", text);
-  input.value = "";
-  input.style.height = "auto";
-  btn.disabled = true;
+  messages.push({ role: 'user', content: text });
+  appendMsg('user', text);
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+  btnEl.disabled = true;
+  sendBtn.disabled = true;
 
-  // Show thinking indicator
-  const thinking = appendMsg("assistant thinking", "Thinking...");
+  await saveConversation();
+
+  const thinking = appendMsg('assistant thinking', 'Thinking...');
 
   try {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages }),
     });
 
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.error || "Something went wrong");
+      throw new Error(err.error || 'Something went wrong');
     }
 
     const data = await res.json();
-    messages.push({ role: "assistant", content: data.content });
+    messages.push({ role: 'assistant', content: data.content });
 
     thinking.remove();
-    appendMsg("assistant", data.content);
+    appendMsg('assistant', data.content);
+
+    await saveConversation();
   } catch (err) {
     thinking.remove();
-    appendMsg("assistant", "Error: " + err.message);
+    appendMsg('assistant', 'Error: ' + err.message);
   } finally {
-    btn.disabled = false;
-    input.focus();
+    btnEl.disabled = false;
+    sendBtn.disabled = false;
+    userInput.focus();
   }
+}
+
+// ── Bottom input form (active chat) ──
+chatForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = userInput.value.trim();
+  await handleChatSubmit(text, userInput, sendBtn);
 });
 
+// ── Empty state form ──
+emptyChatForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = emptyInput.value.trim();
+  await handleChatSubmit(text, emptyInput, emptySendBtn);
+});
+
+// ── Auto-resize textareas ──
+function autoResize(el) {
+  el.addEventListener('input', () => {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+  });
+}
+autoResize(userInput);
+autoResize(emptyInput);
+
+// ── Enter to send, Shift+Enter for newline ──
+function enterToSend(el, form) {
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      form.dispatchEvent(new Event('submit'));
+    }
+  });
+}
+enterToSend(userInput, chatForm);
+enterToSend(emptyInput, emptyChatForm);
+
+// ── Append message to conversation area ──
 function appendMsg(cls, text) {
-  const div = document.createElement("div");
-  div.className = "msg " + cls;
+  const div = document.createElement('div');
+  div.className = 'msg ' + cls;
   div.textContent = text;
   convo.appendChild(div);
   convo.scrollTop = convo.scrollHeight;
   return div;
 }
-
-input.focus();
 </script>
 </body>
 </html>
