@@ -503,9 +503,9 @@
 // ── Supabase client ──
 const SUPABASE_URL = 'https://htcawxswxnfgujtgxttw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0Y2F3eHN3eG5mZ3VqdGd4dHR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTU5MDUsImV4cCI6MjA5MDUzMTkwNX0.l_iA7SnS8_hECsDw5336i9yFj30lPJvhoqGHvfBKWGM';
-let supabase;
+let db;
 if (window.supabase && window.supabase.createClient) {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   console.log('Supabase initialized OK');
 } else {
   console.error('Supabase library not loaded! window.supabase =', window.supabase);
@@ -596,9 +596,9 @@ authForm.addEventListener('submit', async (e) => {
   try {
     let result;
     if (authMode === 'login') {
-      result = await supabase.auth.signInWithPassword({ email, password });
+      result = await db.auth.signInWithPassword({ email, password });
     } else {
-      result = await supabase.auth.signUp({ email, password });
+      result = await db.auth.signUp({ email, password });
     }
 
     if (result.error) throw result.error;
@@ -620,7 +620,7 @@ authForm.addEventListener('submit', async (e) => {
 authForm.onsubmit = function() { return false; };
 
 // ── Auth state listener ──
-supabase.auth.onAuthStateChange(async (event, session) => {
+db.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) {
     currentUser = session.user;
     showApp();
@@ -632,7 +632,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 
 // ── Check initial session ──
 (async () => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await db.auth.getSession();
   if (session?.user) {
     currentUser = session.user;
     showApp();
@@ -654,12 +654,12 @@ async function showApp() {
 
 // ── Sign out ──
 signOutBtn.addEventListener('click', async () => {
-  await supabase.auth.signOut();
+  await db.auth.signOut();
 });
 
 // ── Conversations CRUD ──
 async function loadConversations() {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('conversations')
     .select('id, title, updated_at')
     .order('updated_at', { ascending: false });
@@ -685,7 +685,7 @@ function renderConversationList() {
 }
 
 async function loadConversation(id) {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('conversations')
     .select('*')
     .eq('id', id)
@@ -731,12 +731,12 @@ async function saveConversation() {
     : 'New conversation';
 
   if (currentConvoId) {
-    await supabase
+    await db
       .from('conversations')
       .update({ messages, title, updated_at: new Date().toISOString() })
       .eq('id', currentConvoId);
   } else {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('conversations')
       .insert({ user_id: currentUser.id, title, messages })
       .select()
