@@ -548,10 +548,10 @@ let messages = [];
 
 // ── GIF pool ──
 const gifUrls = [
-  "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNjRiZGQ0OTc3ZWRkMjIzYjVlYjEwZGMyNmI2YzAyNTQ4ZjcyMjI1ZiZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/3o7TKnO6Wfc0eomNl6/giphy.gif",
-  "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExZjA5OTZjMTkxYzE0MmFhNjQ3MzAxYzQ1ZWNhNmFjYjg2NjQwOTIwOSZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/3ohzdYJK1lnOYUGRva/giphy.gif",
-  "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExY2I5ZWJhZjg2MzNiZjI4MTRmZmE0MjAyZGQwODMzOGRhMjM5ZDFkYyZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/JRhS6WoswF8FxE0g2R/giphy.gif",
-  "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzBhYTNmOWRlZWZlZjdiODc2NDZhMDViOWFmZGE1YWEwNjZmNjdjMyZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/Oj5w7QOeA0enm/giphy.gif"
+  "https://media.giphy.com/media/xM7TaHuU8eb6Il4baS/giphy.gif",
+  "https://media1.tenor.com/m/PbKcxNYCFV8AAAAC/the-office-michael-scott.gif",
+  "https://media.giphy.com/media/w5kEOJgspFSkTJZg0g/giphy.gif",
+  "https://media.giphy.com/media/GialUsEqryvKxwmdeL/giphy.gif"
 ];
 
 function showRandomGif() {
@@ -833,11 +833,24 @@ function enterToSend(el, form) {
 enterToSend(userInput, chatForm);
 enterToSend(emptyInput, emptyChatForm);
 
+// ── Simple markdown to HTML ──
+function renderMarkdown(text) {
+  let html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/\n/g, '<br>');
+  return html;
+}
+
 // ── Append message to conversation area ──
 function appendMsg(cls, text) {
   const div = document.createElement('div');
   div.className = 'msg ' + cls;
-  div.textContent = text;
+  if (cls.includes('assistant') && !cls.includes('thinking')) {
+    div.innerHTML = renderMarkdown(text);
+  } else {
+    div.textContent = text;
+  }
   convo.appendChild(div);
   convo.scrollTop = convo.scrollHeight;
   return div;
